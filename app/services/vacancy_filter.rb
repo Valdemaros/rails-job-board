@@ -1,36 +1,43 @@
 class VacancyFilter
+  KEYWORDS = %w[
+    ruby
+    rails
+    elixir
+    ruby on rails
+    программист
 
-  KEYWORDS = %w[ruby rails elixir].freeze
-  LOCATIONS = %w[113 16].freeze
+  ].freeze
 
-  # INCOME 
-  def initialize(data)
-    @vacancies = data['name']
-    @locations = data.dig("area", "id")
+  def initialize(vacancies)
+    @vacancies = vacancies
   end
 
   def call
-    @vacancies.select { |v| keyword_match?(v) } && @locations.select { |loc| location_match?(loc) }
+    @vacancies.select { |vacancy| relevant?(vacancy) }
   end
 
   private
 
-  # True has to be in select block
+  def relevant?(vacancy)
+    keyword_match?(vacancy) 
+    # && location_match?(vacancy)
+  end
 
   def keyword_match?(vacancy)
-    name = vacancy['name'].to_s.downcase
-    KEYWORDS.any? { |keyword| name.include?(keyword) }
+    text = [
+      vacancy["name"],
+      vacancy.dig("snippet", "requirement"),
+      vacancy.dig("snippet", "responsibility")
+    ].compact.join(" ").downcase
+
+    KEYWORDS.any? { |keyword| text.include?(keyword) }
   end
 
-  def location_match?(location)
-    area = location.dig("area", "id")
-    LOCATIONS.any? { |loc| location.include?(loc) }
-  end
+  # def location_match?(vacancy)
+  #   area_id = vacancy.dig("area", "id").to_s
+  #   LOCATIONS.include? (area_id) 
+  # end
 end
-
-
-# API DEEP SEEK
-# sk-61a06e207bfd4e4c9b0f7f1505948e03
 
 
 

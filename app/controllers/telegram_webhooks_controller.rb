@@ -1,0 +1,2 @@
+class TelegramWebhooksController < ApplicationController
+end

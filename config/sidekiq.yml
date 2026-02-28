@@ -1,0 +1,11 @@
+:concurrency: 5
+
+:queues:
+  - default
+
+:schedule:
+  fetch_vacancies:
+    cron: "*/5 * * * *"
+    class: "FetchVacanciesJob"
+    queue: default
+

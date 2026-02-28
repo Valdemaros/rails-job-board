@@ -1,8 +1,10 @@
 class VacancyImporter
-  def import(raw_vacancies)
+  def import(filtered_vacancies)
     new_vacancies = []
-    raw_vacancies.each do |data|
+    
+    filtered_vacancies.each do |data|
       next if Vacancy.exists?(hh_id: data['id'])
+      
       vacancy = Vacancy.create!(
         hh_id: data['id'],
         name: data['name'],
@@ -12,12 +14,20 @@ class VacancyImporter
         url: data['alternate_url'],
         salary_from: data.dig('salary', 'from'),
         salary_to: data.dig('salary', 'to'),
-        currency: data.dig('salary', 'currency'),
+        # currency: data.dig('salary', 'currency'),
         published_at: data['published_at'],
         snippet: data.dig('snippet', 'requirement')
       )
+
       new_vacancies << vacancy
     end
+    
     new_vacancies
   end
 end
+
+
+# VacancyImporter#import берёт сырые данные → 
+# вызывает Vacancy.create! → 
+# Vacancy пишет в таблицу vacancies, 
+# структура которой задана миграциями и отражена в db/schema.rb.

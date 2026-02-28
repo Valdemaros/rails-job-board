@@ -3,6 +3,12 @@ source "https://rubygems.org"
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.2"
 
+gem "sidekiq", "~> 7.0"
+
+gem "sidekiq-scheduler"
+
+gem "telegram-bot-ruby", "~> 2.0"
+
 gem "faraday"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
