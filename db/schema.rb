@@ -10,16 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_23_165537) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_05_083615) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "subscriptions", force: :cascade do |t|
     t.boolean "active"
     t.datetime "created_at", null: false
+    t.integer "language", default: 0, null: false
     t.bigint "telegram_id"
     t.datetime "updated_at", null: false
     t.string "username"
+    t.index ["language"], name: "index_subscriptions_on_language"
     t.index ["telegram_id"], name: "index_subscriptions_on_telegram_id", unique: true
   end
 
