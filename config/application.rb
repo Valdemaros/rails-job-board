@@ -38,8 +38,5 @@ module HhParser
 
     # Don't generate system test files.
     config.generators.system_tests = nil
-
-    # Используем Sidekiq в production, Solid Queue в development/test
-    config.active_job.queue_adapter = :solid_queue
   end
 end
