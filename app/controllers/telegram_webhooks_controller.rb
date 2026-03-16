@@ -88,13 +88,14 @@ class TelegramWebhooksController < ApplicationController
     when "subscribe"
       # Кнопка "🔔 Подписаться" — показываем выбор языка
       show_language_buttons
-
     when /^subscribe_(.+)$/
       # Кнопка с языком (subscribe_ruby, subscribe_python и т.д.)
       # Регулярное выражение извлекает язык: "subscribe_ruby" → "ruby"
       language = Regexp.last_match[1].to_sym
       save_subscription_and_notify(language)
-
+    when "unsubscribe"
+      Subscription.find_by(telegram_id: @payload[:chat_id])&.destroy
+        send_message("Вы отписались")
     when "status"
       # Кнопка "📊 Мой статус" — показываем текущую подписку
       show_subscription_status
@@ -138,7 +139,8 @@ class TelegramWebhooksController < ApplicationController
 
   # Отправляет приветственное сообщение с главными кнопками
   def send_welcome_message
-    message = "👋 Привет! Я бот для поиска IT-вакансий с HH.ru\n\n"
+    message = "👋 Привет! #{@payload[:username]}\n\n"
+    message += "Я бот для поиска IT-вакансий с HH.ru\n"
     message += "📌 Что я умею:\n"
     message += "• Присылаю свежие вакансии по твоему языку\n"
     message += "• Обновляю базу каждые 5 минут\n"
@@ -162,8 +164,8 @@ class TelegramWebhooksController < ApplicationController
 
   # Показывает кнопки с выбором языка программирования
   def show_language_buttons
-    message = "Выберите язык программирования:\n\n"
-    message += "Я буду присылать только вакансии по этому языку."
+    message = "Отлично! Давай выберем язык\n\n"
+    message += "На какие вакансии хочешь подписаться?"
 
     # Inline-клавиатура: 3 строки по 2 кнопки + кнопка "Назад"
     keyboard = [
@@ -202,11 +204,16 @@ class TelegramWebhooksController < ApplicationController
       # Если подписки нет — создаём новую
       Subscription.create!(
         telegram_id: @payload[:chat_id],
-        username: @payload[:username] || "unknown",  # Если username нет, пишем "unknown"
+        username: @payload[:username] || "unknown",
         language: language
       )
-      send_message("✅ Вы подписаны на #{language_name(language)} вакансии!")
+      send_message("✅Готово\n\n
+                   Ты подписан на вакансии: #{language_name(language)}\n\n
+                   Сейчас пришлю последние вакансии.")
     end
+
+    # Отправляем последние 5 вакансий по этому языку
+    send_recent_vacancies(language)
   end
 
   # Показывает статус подписки пользователя
@@ -215,18 +222,29 @@ class TelegramWebhooksController < ApplicationController
     subscription = Subscription.find_by(telegram_id: @payload[:chat_id])
 
     if subscription
-      # Подписка есть — показываем детали
+      # Подписка есть — показываем q
       language = language_name(subscription.language)
-      message = "📊 Ваш статус:\n\n"
-      message += "✅ Подписан\n"
+      created_date = subscription.created_at.strftime("%d %B %Y")
+      message = "📊 Твоя подписка\n\n"
       message += "Язык: #{language}\n"
-      message += "Telegram ID: #{subscription.telegram_id}"
+      message += "Статуc: ✅ Активна\n"
+      message += "Подписан: #{created_date}\n"
+
+      keyboard = [
+        [
+          { text: "Сменить язык", callback_data: "subscribe" }
+        ],
+        [
+          { text: "Отписаться", callback_data: "unsubscribe" }
+        ]
+      ]
     else
       # Подписки нет — предлагаем подписаться
-      message = "❌ Вы не подписаны.\n\nНажмите 🔔 Подписаться чтобы подписаться."
+      message = "❌ Вы не подписаны.\n\nНажмите 🔔 Подписаться."
+      keyboard = nil
     end
 
-    send_message(message)
+    send_message(message, keyboard: keyboard)
   end
 
   # ==================== ДРУГИЕ КОМАНДЫ ====================
@@ -260,6 +278,52 @@ class TelegramWebhooksController < ApplicationController
 
   # ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
+  # Отправляет последние 5 вакансий по языку
+  def send_recent_vacancies(language)
+    vacancies = Vacancy.where("name ILIKE ?", "%#{language}%").order(created_at: :desc).limit(5)
+
+    if vacancies.any?
+      # Формируем сообщение
+      message = build_vacancies_message(vacancies, language)
+      send_message(message)
+    else
+      send_message("📭 Пока нет вакансий по языку #{language_name(language)}.\n\nЗаходи позже!")
+    end
+  rescue => e
+    Rails.logger.error("Ошибка отправки вакансий: #{e.message}")
+  end
+
+  # Формирует текст сообщения с вакансиями
+  def build_vacancies_message(vacancies, language)
+    count = vacancies.count
+    text = "🔔 Вакансии #{language_name(language)} (#{count})\n\n"
+
+    vacancies.each_with_index do |vacancy, index|
+      text += "#{index + 1}. #{vacancy.name}\n"
+      text += "   💰 #{format_salary(vacancy)}\n"
+      text += "   🏢 #{vacancy.employer || 'Не указано'} · #{vacancy.area || 'Не указано'}\n"
+      text += "   🔗 [Открыть](#{vacancy.url})\n\n"
+    end
+
+    text
+  end
+
+  # Форматирует зарплату
+  def format_salary(vacancy)
+    from = vacancy.salary_from
+    to = vacancy.salary_to
+
+    if from && to
+      "от #{from} до #{to} руб."
+    elsif from
+      "от #{from} руб."
+    elsif to
+      "до #{to} руб."
+    else
+      "ЗП не указана"
+    end
+  end
+
   # Отправляет сообщение пользователю
   #
   # Параметры:
@@ -277,9 +341,9 @@ class TelegramWebhooksController < ApplicationController
     end
 
     Rails.logger.info ">>> Sending message to chat_id=#{@payload[:chat_id]}"
-    
+
     @bot.api.send_message(**options)
-    
+
     Rails.logger.info ">>> Message sent successfully"
   rescue => e
     Rails.logger.error ">>> Failed to send message: #{e.class} - #{e.message}"

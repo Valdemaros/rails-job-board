@@ -4,39 +4,28 @@
 # 3. Возвращает сырой массив данных (JSON)
 #
 class HhScraper
-  BASE_URL = 'https://api.hh.ru'
+  BASE_URL = "https://api.hh.ru"
 
-  languages = %w(Ruby Go Java Javascript PHP Python).freeze
+  LANGUAGES = %w[Ruby Golang Java JavaScript PHP Python].freeze
 
-  # @param query [String] поисковый запрос (например, "Ruby", "Python")
-  # @param per_page [Integer] количество вакансий на странице (максимум 100 по API HH)
-  # @param max_pages [Integer] ограничение на количество страниц для парсинга
-  #               (защита от слишком долгих запросов)
-  def initialize(query: "Ruby", per_page: 100, max_pages: 5)
-    @query = query
+  def initialize(per_page: 100, max_pages: 5)
     @per_page = per_page
     @max_pages = max_pages
   end
 
-  # Основной метод — fetch_for_query
-  # Возвращает массив сырых вакансий (Hash) для переданного query
-  #
-  # Алгоритм:
-  # 1. Инициализирует пустой массив vacancies
-  # 2. В цикле запрашивает страницы по одной (page 0, 1, 2...)
-  # 3. Добавляет вакансии из каждой страницы в общий массив
-  # 4. Останавливается когда:
-  #    - закончились страницы (page >= total_pages)
-  #    - достигнут лимит max_pages
-  #
-  # @return [Array<Hash>] массив хешей с данными вакансий
-  def fetch_for_query
+  def fetch_all_languages
+    LANGUAGES.flat_map { |language| fetch_for_language(language) }
+  end
+
+  private
+
+  def fetch_for_language(language)
     vacancies = []
     page = 0
 
     loop do
       # Получаем страницу с данными
-      data = fetch_page_raw(page)
+      data = fetch_page_raw(language, page)
       items = data["items"] || []
       vacancies.concat(items)
 
@@ -51,28 +40,17 @@ class HhScraper
     vacancies
   end
 
-  private
 
-  # fetch_page_raw — низкоуровневый метод для получения одной страницы
-  #
-  # Параметры запроса:
-  # - text: поисковый запрос (например, "Ruby")
-  # - per_page: количество вакансий на странице
-  # - page: номер страницы (0-based)
-  # - order_by: сортировка по времени публикации (сначала новые)
-  #
-  # @param page [Integer] номер страницы
-  # @return [Hash] распарсенный JSON ответ от API
-  def fetch_page_raw(page)
+  def fetch_page_raw(language, page)
     params = {
-      text: @query,
+      text: language,
       per_page: @per_page,
       page: page,
-      order_by: 'publication_time'
+      order_by: "publication_time"
     }
 
     # GET-запрос к /vacancies с параметрами
-    response = connection.get('/vacancies', params)
+    response = connection.get("/vacancies", params)
 
     # Обработка ошибок API
     unless response.success?
@@ -85,8 +63,8 @@ class HhScraper
 
   def connection
     @connection ||= Faraday.new(url: BASE_URL) do |conn|
-      conn.headers['HH-User-Agent'] = 'your-app-name/1.0 (kuzmenkov.vova2@gmail)'
-      conn.headers['Accept'] = 'application/json'
+      conn.headers["HH-User-Agent"] = "your-app-name/1.0 (kuzmenkov.vova2@gmail)"
+      conn.headers["Accept"] = "application/json"
     end
   end
 end

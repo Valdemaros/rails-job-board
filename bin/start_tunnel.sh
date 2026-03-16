@@ -5,6 +5,17 @@ echo "   Запуск Telegram бота"
 echo "========================================"
 echo ""
 
+# Получаем токен из credentials
+BOT_TOKEN=$(bin/rails runner "puts Rails.application.credentials.dig(:telegram, :bot_token)" 2>/dev/null)
+
+if [ -z "$BOT_TOKEN" ]; then
+  echo "   ❌ Токен не найден в credentials!"
+  echo "   Проверь: bin/rails credentials:edit"
+  exit 1
+fi
+
+echo "   ✅ Токен загружен из credentials"
+
 # Проверка Rails
 echo "1. Проверка Rails..."
 if curl -s http://localhost:3000/up | grep -q "green"; then
@@ -33,7 +44,7 @@ CLOUDFLARED_PID=$!
 # Ждём пока cloudflared выдаст URL (максимум 30 секунд)
 for i in {1..30}; do
   if [ -f /tmp/cloudflared_startup.log ]; then
-    URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' /tmp/cloudflared_startup.log | head -1)
+    URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cloudflared_startup.log | tail -1)
     if [ -n "$URL" ]; then
       break
     fi
@@ -69,7 +80,7 @@ sleep 2
 echo ""
 echo "4. Обновление webhook в Telegram..."
 WEBHOOK_URL="$URL/telegram/webhook"
-RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot8736368536:AAHG54YQbUFEeG7trMfuLW5MjIQzTlmyHFM/setWebhook?url=$WEBHOOK_URL")
+RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=$WEBHOOK_URL")
 
 if echo "$RESPONSE" | grep -q '"ok":true'; then
   echo "   ✅ Webhook обновлён"
@@ -83,7 +94,7 @@ fi
 echo ""
 echo "5. Проверка webhook..."
 sleep 2
-WEBHOOK_INFO=$(curl -s "https://api.telegram.org/bot8736368536:AAHG54YQbUFEeG7trMfuLW5MjIQzTlmyHFM/getWebhookInfo")
+WEBHOOK_INFO=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo")
 ERROR_MSG=$(echo "$WEBHOOK_INFO" | jq -r '.result.last_error_message // ""')
 PENDING_COUNT=$(echo "$WEBHOOK_INFO" | jq -r '.result.pending_update_count // 0')
 
