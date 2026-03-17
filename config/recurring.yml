@@ -10,3 +10,9 @@
 #     schedule: at 5am every day
 
 # production jobs are disabled for Render deployment
+
+cleanup_old_vacancies:
+  class: CleanUpOldVacanciesJob
+  args: [ { days_old: 30} ]
+  schedule: every day at 1am
+
