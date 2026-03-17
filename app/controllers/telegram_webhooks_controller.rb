@@ -135,6 +135,8 @@ class TelegramWebhooksController < ApplicationController
     # Пропускаем в тестах чтобы не было ошибок API
     return if Rails.env.test?
     @bot.api.answer_callback_query(callback_query_id: @payload[:callback_id])
+  rescue Telegram::Bot::Exceptions::ResponseError => e
+    Rails.logger.warn "Failed to answer callback: #{e.message}"
   end
 
   # Отправляет приветственное сообщение с главными кнопками
