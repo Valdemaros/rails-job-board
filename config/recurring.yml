@@ -9,10 +9,12 @@
 #     priority: 2
 #     schedule: at 5am every day
 
-# production jobs are disabled for Render deployment
+fetch_all_vacancies:
+  class: FetchAllVacanciesJob
+  schedule: every 3 hours
 
 cleanup_old_vacancies:
   class: CleanUpOldVacanciesJob
-  args: [ { days_old: 30} ]
+  args: [ { days_old: 30 } ]
   schedule: every day at 1am
 
