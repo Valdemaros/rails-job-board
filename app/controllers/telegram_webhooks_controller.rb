@@ -104,6 +104,10 @@ class TelegramWebhooksController < ApplicationController
       # Кнопка "📬 Последние" — показать последнюю вакансию
       show_latest_vacancy
 
+    when "refresh"
+      # Кнопка "🔄 Обновить" — запустить парсинг вакансий
+      refresh_vacancies
+
     when "help"
       # Кнопка "❓ Помощь" — показать справку
       show_help
@@ -157,6 +161,9 @@ class TelegramWebhooksController < ApplicationController
       ],
       [
         { text: "📬 Последние", callback_data: "latest" },
+        { text: "🔄 Обновить", callback_data: "refresh" }
+      ],
+      [
         { text: "❓ Помощь", callback_data: "help" }
       ]
     ]
@@ -267,12 +274,19 @@ class TelegramWebhooksController < ApplicationController
     send_message(message)
   end
 
+  # Запускает парсинг вакансий вручную
+  def refresh_vacancies
+    FetchAllVacanciesJob.perform_later
+    send_message("🔄 Запускаю обновление вакансий...\n\nЭто займёт около минуты. Нажмите 📬 Последние через минуту.")
+  end
+
   # Показывает справку по боту
   def show_help
     message = "❓ Помощь\n\n"
     message += "🔔 Подписаться — выбрать язык для вакансий\n"
     message += "📊 Мой статус — проверить подписку\n"
-    message += "📬 Последние — последняя вакансия\n\n"
+    message += "📬 Последние — последняя вакансия\n"
+    message += "🔄 Обновить — загрузить свежие вакансии\n\n"
     message += "Используйте кнопки для управления."
 
     send_message(message)
