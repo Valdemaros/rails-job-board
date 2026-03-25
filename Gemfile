@@ -3,7 +3,7 @@ source "https://rubygems.org"
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.2"
 
-gem "telegram-bot-ruby", "~> 2.0"
+gem "telegram-bot-ruby", "~> 2.6"
 
 gem "faraday"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
